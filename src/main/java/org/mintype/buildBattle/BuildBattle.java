@@ -9,6 +9,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 
 public final class BuildBattle extends JavaPlugin implements Listener {
 
@@ -32,5 +34,18 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () ->
                 e.getPlayer().teleport(getSpawn())
         );
+    }
+
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onHunger(FoodLevelChangeEvent e) {
+        e.setFoodLevel(20);
+        e.setCancelled(true);
     }
 }
