@@ -11,6 +11,10 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.GameMode;
 
 public final class BuildBattle extends JavaPlugin implements Listener {
 
@@ -26,7 +30,9 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        e.getPlayer().teleport(getSpawn());
+        Player p = e.getPlayer();
+        p.teleport(getSpawn());
+        p.setGameMode(GameMode.ADVENTURE);
     }
 
     @EventHandler
@@ -47,5 +53,32 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     public void onHunger(FoodLevelChangeEvent e) {
         e.setFoodLevel(20);
         e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBreak(BlockBreakEvent e) {
+        Player p = e.getPlayer();
+
+        if (!p.isOp()) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlace(BlockPlaceEvent e) {
+        Player p = e.getPlayer();
+
+        if (!p.isOp()) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInteract(PlayerInteractEvent e) {
+        Player p = e.getPlayer();
+
+        if (!p.isOp()) {
+            e.setCancelled(true);
+        }
     }
 }
