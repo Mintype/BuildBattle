@@ -1,0 +1,6 @@
+name: BuildBattle
+version: '1.0-SNAPSHOT'
+main: org.mintype.buildBattle.BuildBattle
+api-version: '1.21'
+authors: [ Mintype ]
+description: A mod for build battle in Minecraft.
