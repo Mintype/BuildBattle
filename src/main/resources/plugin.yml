@@ -8,5 +8,12 @@ description: A mod for build battle in Minecraft.
 commands:
   nightvision:
     description: Toggles night vision
+
   start:
     description: Starts the build battle game
+
+  addtime:
+    description: Adds time to the game
+
+  reset:
+    description: Resets the game

@@ -127,7 +127,7 @@ public class PlotManager {
         );
     }
 
-    private void teleportToPlot(Player p, int plotId) {
+    public void teleportToPlot(Player p, int plotId) {
 
         int step = PLOT_SIZE + GAP;
 

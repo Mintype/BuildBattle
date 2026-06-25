@@ -189,14 +189,71 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             }
 
             return true;
-        }
+        } else if (command.getName().equalsIgnoreCase("addtime")) {
 
-        if (!p.isOp()) {
-            p.sendMessage("§cNo permission.");
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
+            if (args.length != 1) {
+                p.sendMessage("§cUsage: /addtime <seconds>");
+                return true;
+            }
+
+            if (gameState != GameState.BUILDING) {
+                p.sendMessage("§cGame has not started yet.");
+                return true;
+            }
+
+            int seconds;
+
+            try {
+                seconds = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cInvalid number.");
+                return true;
+            }
+
+            gameTime += seconds; // make sure gameTime is your field
+
+            Bukkit.broadcastMessage("§a+" + seconds + " seconds added!");
+
             return true;
-        }
+        } else if (command.getName().equalsIgnoreCase("reset")) {
 
-        if (command.getName().equalsIgnoreCase("start")) {
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
+            gameState = GameState.LOBBY;
+            countdown = -1;
+            gameTime = -1;
+
+            scoreboardManager.updateAll(gameState, countdown, gameTime);
+
+            nightVisionPlayers.clear();
+
+            plotManager.clearPlots();
+
+            for (Player pl : Bukkit.getOnlinePlayers()) {
+                pl.setGameMode(GameMode.ADVENTURE);
+                pl.getInventory().clear();
+                pl.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
+                pl.removePotionEffect(PotionEffectType.NIGHT_VISION);
+            }
+
+            Bukkit.broadcastMessage("§cGame has been reset!");
+
+            return true;
+        } else if (command.getName().equalsIgnoreCase("start")) {
+
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
             startGame();
             return true;
         }
@@ -305,4 +362,31 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             p.setGameMode(gameMode);
         }
     }
+
+//    public void addGameTime(int seconds) {
+//        if (gameState != GameState.BUILDING) return;
+//
+//        gameTime += seconds;
+//
+//        Bukkit.broadcastMessage("§a+" + seconds + " seconds added to build time!");
+//        scoreboardManager.updateAll(gameState, countdown, gameTime);
+//    }
+//
+//    public void resetGame() {
+//
+//        gameState = GameState.LOBBY;
+//        countdown = -1;
+//        gameTime = -1;
+//
+//        Bukkit.broadcastMessage("§cGame reset!");
+//
+//        for (Player p : Bukkit.getOnlinePlayers()) {
+//            p.setGameMode(GameMode.ADVENTURE);
+//            plotManager.teleportToPlot(p, 0); // optional spawn fallback
+//
+//        }
+//
+//        plotManager.clearPlots();
+//        scoreboardManager.updateAll(gameState, countdown, gameTime);
+//    }
 }

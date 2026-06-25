@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 
@@ -119,4 +120,94 @@ public class GameProtectionManager implements Listener {
             e.setCancelled(true);
         }
     }
+
+    @EventHandler
+    public void onRedstone(BlockRedstoneEvent e) {
+        if (off()) return;
+        e.setNewCurrent(0);
+    }
+
+    @EventHandler
+    public void onPhysics(BlockPhysicsEvent e) {
+        if (off()) return;
+
+        Material type = e.getBlock().getType();
+
+        if (type == Material.REDSTONE_WIRE ||
+                type == Material.REPEATER ||
+                type == Material.COMPARATOR ||
+                type == Material.PISTON ||
+                type == Material.STICKY_PISTON ||
+                type == Material.DISPENSER ||
+                type == Material.DROPPER ||
+                type == Material.OBSERVER) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPistonExtend(BlockPistonExtendEvent e) {
+        if (off()) return;
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPistonRetract(BlockPistonRetractEvent e) {
+        if (off()) return;
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onDispense(BlockDispenseEvent e) {
+        if (off()) return;
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onHopperMove(InventoryMoveItemEvent e) {
+        if (off()) return;
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onVehicleMove(org.bukkit.event.vehicle.VehicleMoveEvent e) {
+        if (off()) return;
+
+        if (e.getVehicle() instanceof Minecart) {
+            e.getVehicle().remove();
+        }
+    }
+
+    @EventHandler
+    public void onPlaceMinecart(PlayerInteractEvent e) {
+        if (off()) return;
+
+        if (e.getItem() == null) return;
+
+        Material t = e.getItem().getType();
+
+        if (t == Material.MINECART ||
+                t == Material.HOPPER_MINECART ||
+                t == Material.TNT_MINECART ||
+                t == Material.FURNACE_MINECART) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onRedstoneInputs(PlayerInteractEvent e) {
+        if (off()) return;
+
+        if (e.getClickedBlock() == null) return;
+
+        Material t = e.getClickedBlock().getType();
+
+        if (t == Material.LEVER ||
+                t.name().contains("BUTTON") ||
+                t.name().contains("PRESSURE_PLATE")) {
+            e.setCancelled(true);
+        }
+    }
+
+
 }
