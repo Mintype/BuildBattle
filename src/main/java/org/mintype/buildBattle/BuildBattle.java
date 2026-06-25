@@ -3,6 +3,8 @@ package org.mintype.buildBattle;
 import org.bukkit.World;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -136,6 +138,37 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         if (!p.isOp()) {
             e.setCancelled(true);
         }
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+
+        if (!(sender instanceof Player p)) return true;
+
+        if (command.getName().equalsIgnoreCase("nightvision")) {
+
+            UUID id = p.getUniqueId();
+
+            if (nightVisionPlayers.contains(id)) {
+                nightVisionPlayers.remove(id);
+                p.removePotionEffect(PotionEffectType.NIGHT_VISION);
+                p.sendMessage("§cNight vision disabled.");
+            } else {
+                nightVisionPlayers.add(id);
+                p.addPotionEffect(new PotionEffect(
+                        PotionEffectType.NIGHT_VISION,
+                        Integer.MAX_VALUE,
+                        0,
+                        false,
+                        false
+                ));
+                p.sendMessage("§aNight vision enabled.");
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private void startPlotBorders() {
