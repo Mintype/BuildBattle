@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -26,8 +27,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 import org.bukkit.ChatColor;
 
-import java.util.HashSet;
-import java.util.UUID;
+import java.util.*;
+
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -40,7 +41,23 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     private static final int MIN_Y = 0;
     private static final int MAX_Y = 33;
 
+    private int countdown = -1;
+    private int gameTime = -1; // seconds
+
+    private final Map<UUID, Scoreboard> boards = new HashMap<>();
     private final HashSet<UUID> nightVisionPlayers = new HashSet<>();
+    private final Map<Player, Integer> playerPlot = new HashMap<>();
+    private final Map<Integer, List<Player>> plotPlayers = new HashMap<>();
+
+    private enum GameState {
+        LOBBY,
+        STARTING,
+        BUILDING,
+        VOTING,
+        ENDED
+    }
+
+    private GameState gameState = GameState.LOBBY;
 
     @Override
     public void onEnable() {
@@ -48,11 +65,6 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         startPlotBorders();
 
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                giveScoreboard(p);
-            }
-        }, 0L, 20L);
     }
 
     private Location getSpawn() {
@@ -60,16 +72,31 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         return new Location(w, 0, -14, 0);
     }
 
+    private void clearPlots() {
+        playerPlot.clear();
+        plotPlayers.clear();
+
+        for (int i = 1; i <= 36; i++) {
+            plotPlayers.put(i, new ArrayList<>());
+        }
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
-
-        giveScoreboard(p);
 
         p.teleport(getSpawn());
         if (!p.isOp()) {
             p.setGameMode(GameMode.ADVENTURE);
         }
+
+        createScoreboard(e.getPlayer());
+        updateScoreboards();
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        updateScoreboards();
     }
 
     @EventHandler
@@ -184,6 +211,16 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 p.sendMessage("§aNight vision enabled.");
             }
 
+            return true;
+        }
+
+        if (!p.isOp()) {
+            p.sendMessage("§cNo permission.");
+            return true;
+        }
+
+        if (command.getName().equalsIgnoreCase("start")) {
+            startGame();
             return true;
         }
 
@@ -312,6 +349,76 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         return gridZ * 6 + gridX + 1;
     }
 
+    private void createScoreboard(Player p) {
+
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        Scoreboard board = manager.getNewScoreboard();
+
+        Objective obj = board.registerNewObjective(
+                "bb",
+                "dummy",
+                ChatColor.GREEN + "" + ChatColor.BOLD + "Build Battle"
+        );
+
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        // STATIC LINES (never change)
+        obj.getScore("§7 ").setScore(6);
+        obj.getScore("§aPlayers:").setScore(5);
+        obj.getScore("§bMode: §fSolo").setScore(2);
+        obj.getScore("§eevents.rumc.club").setScore(1);
+
+        // DYNAMIC LINES (via teams)
+        Team playersTeam = board.registerNewTeam("players");
+        playersTeam.addEntry("§p");
+        obj.getScore("§p").setScore(4);
+
+        Team statusTeam = board.registerNewTeam("status");
+        statusTeam.addEntry("§s");
+        obj.getScore("§s").setScore(3);
+
+        boards.put(p.getUniqueId(), board);
+        p.setScoreboard(board);
+    }
+
+    private void updateScoreboard(Player p) {
+
+        Scoreboard board = boards.get(p.getUniqueId());
+        if (board == null) return;
+
+        Team playersTeam = board.getTeam("players");
+        Team statusTeam = board.getTeam("status");
+
+        if (playersTeam != null) {
+            int online = Bukkit.getOnlinePlayers().size();
+            playersTeam.setPrefix("§f" + online + "/" + Bukkit.getMaxPlayers());
+        }
+
+        if (statusTeam != null) {
+
+            switch (gameState) {
+
+                case LOBBY -> statusTeam.setPrefix("§eWaiting for host");
+
+                case STARTING -> statusTeam.setPrefix("§eStarting in §6" + countdown);
+
+                case BUILDING -> {
+                    int min = gameTime / 60;
+                    int sec = gameTime % 60;
+                    statusTeam.setPrefix(String.format("§eTime left: §a%d:%02d", min, sec));
+                }
+
+                default -> statusTeam.setPrefix("§cGame ended");
+            }
+        }
+    }
+
+    private void updateScoreboards() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            updateScoreboard(p);
+        }
+    }
+
     private void giveScoreboard(Player p) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         Scoreboard board = manager.getNewScoreboard();
@@ -328,11 +435,184 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         obj.getScore("§7 ").setScore(6);
         obj.getScore("§aPlayers: §f" + online + "/" + Bukkit.getMaxPlayers()).setScore(5);
-        obj.getScore("§eWaiting for host").setScore(4);
+
+        String status;
+
+        switch (gameState) {
+
+            case LOBBY -> status = "§eWaiting for host";
+
+            case STARTING -> status = "§eStarting in §6" + countdown;
+
+            case BUILDING -> {
+                int min = gameTime / 60;
+                int sec = gameTime % 60;
+                status = String.format("§eTime left: §a%d:%02d", min, sec);
+            }
+
+            default -> status = "§cGame ended";
+        }
+
+        obj.getScore(status).setScore(4);
+
         obj.getScore("§bMode: §fSolo").setScore(3);
         obj.getScore("§7  ").setScore(2);
         obj.getScore("§eevents.rumc.club").setScore(1);
 
         p.setScoreboard(board);
+    }
+
+    private void startGame() {
+        if (gameState != GameState.LOBBY) return;
+        gameState = GameState.STARTING;
+
+        countdown = 10;
+
+        clearPlots();
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+
+                if (countdown > 0) {
+                    countdown--;
+
+                    String subtitle;
+
+                    if (countdown <= 3) {
+                        subtitle = "§c" + countdown;
+                    } else {
+                        subtitle = "§e" + countdown;
+                    }
+
+                    if (countdown == 0) {
+                        assignPlots();
+                        subtitle = "§aGO!";
+                    }
+
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        p.sendTitle(
+                                "",
+                                subtitle,
+                                2,
+                                10,
+                                2
+                        );
+                    }
+
+                    updateScoreboards();
+                    return;
+                }
+                gameState = GameState.BUILDING;
+                countdown = -1;
+
+//                assignPlots();
+
+                setAllGameMode(GameMode.CREATIVE);
+
+                Bukkit.broadcastMessage("§aGame started!");
+
+                gameTime = 5 * 60; // 300 seconds
+
+                startGameTimer();
+                updateScoreboards();
+                cancel();
+            }
+        }.runTaskTimer(this, 0L, 20L);
+    }
+
+    private void sendTitle(Player p, String title, String subtitle, int fadeIn, int stay, int fadeOut) {
+        p.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
+    }
+
+    private void startGameTimer() {
+
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+
+                // stop if game is not running
+                if (gameState != GameState.BUILDING) {
+                    cancel();
+                    return;
+                }
+
+                // tick down game time
+                if (gameTime > 0) {
+                    gameTime--;
+                    updateScoreboards();
+                    return;
+                }
+
+                // TIME UP → end game
+                endGame();
+
+                cancel();
+            }
+
+        }.runTaskTimer(this, 0L, 20L); // every 1 second
+    }
+
+    private void endGame() {
+        gameState = GameState.ENDED;
+
+        Bukkit.broadcastMessage("§cGame ended!");
+
+        setAllGameMode(GameMode.SPECTATOR);
+
+        updateScoreboards();
+    }
+
+    private void setAllGameMode(GameMode gameMode) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.setGameMode(gameMode);
+        }
+    }
+
+    private void assignPlots() {
+
+        int plotId = 1;
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+
+            if (plotId > 36) {
+                p.sendMessage("§cNo plot available.");
+                continue;
+            }
+
+            playerPlot.put(p, plotId);
+            plotPlayers.get(plotId).add(p);
+
+            teleportToPlot(p, plotId);
+
+            p.sendMessage("§aYou are in plot #" + plotId);
+
+            plotId++;
+        }
+    }
+
+    private void teleportToPlot(Player p, int plotId) {
+
+        int step = PLOT_SIZE + GAP;
+
+        int gridX = (plotId - 1) % 6;
+        int gridZ = (plotId - 1) / 6;
+
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        Location loc = new Location(
+                Bukkit.getWorlds().get(0),
+                startX + (PLOT_SIZE / 2.0),
+                1,
+                startZ + (PLOT_SIZE / 2.0)
+        );
+
+        p.teleport(loc);
+    }
+
+    private int getPlayerPlot(Player p) {
+        return playerPlot.getOrDefault(p, 0);
     }
 }

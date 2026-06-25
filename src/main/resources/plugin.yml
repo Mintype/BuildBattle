@@ -8,3 +8,5 @@ description: A mod for build battle in Minecraft.
 commands:
   nightvision:
     description: Toggles night vision
+  start:
+    description: Starts the build battle game
