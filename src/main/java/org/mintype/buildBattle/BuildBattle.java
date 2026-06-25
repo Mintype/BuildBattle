@@ -135,9 +135,22 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     public void onInteract(PlayerInteractEvent e) {
         Player p = e.getPlayer();
 
-        if (!p.isOp()) {
+        if (p.isOp()) return;
+
+        if (e.getClickedBlock() == null) return;
+
+        int plotId = getPlotId(e.getClickedBlock().getLocation());
+
+        Bukkit.getLogger().info("[INTERACT] player=" + p.getName()
+                + " plotId=" + plotId);
+
+        if (plotId == 0) {
             e.setCancelled(true);
+            p.sendMessage("§cYou cannot interact outside plots.");
+            return;
         }
+
+        p.sendMessage("§aInteracting in plot #" + plotId);
     }
 
     @Override
