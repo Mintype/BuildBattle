@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -137,20 +138,25 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         if (p.isOp()) return;
 
-        if (e.getClickedBlock() == null) return;
+        Action action = e.getAction();
 
-        int plotId = getPlotId(e.getClickedBlock().getLocation());
+        // Only care about right click actions
+        if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR) return;
 
-        Bukkit.getLogger().info("[INTERACT] player=" + p.getName()
-                + " plotId=" + plotId);
-
-        if (plotId == 0) {
-            e.setCancelled(true);
-            p.sendMessage("§cYou cannot interact outside plots.");
+        // If holding a placeable block/item, allow (placement handled by BlockPlaceEvent anyway)
+        if (e.getItem() != null && e.getItem().getType().isBlock()) {
             return;
         }
 
-        p.sendMessage("§aInteracting in plot #" + plotId);
+        // Otherwise treat as interaction (doors, levers, etc.)
+        if (action == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null) {
+            int plotId = getPlotId(e.getClickedBlock().getLocation());
+
+            if (plotId == 0) {
+                e.setCancelled(true);
+                p.sendMessage("§cYou cannot interact outside plots.");
+            }
+        }
     }
 
     @Override
