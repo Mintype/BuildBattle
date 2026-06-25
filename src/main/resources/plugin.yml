@@ -17,3 +17,7 @@ commands:
 
   reset:
     description: Resets the game
+
+  floor:
+    description: Sets your plot floor to the block you're holding
+    usage: /floor

@@ -189,7 +189,8 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             }
 
             return true;
-        } else if (command.getName().equalsIgnoreCase("addtime")) {
+        }
+        else if (command.getName().equalsIgnoreCase("addtime")) {
 
             if (!p.isOp()) {
                 p.sendMessage("§cNo permission.");
@@ -202,7 +203,13 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             }
 
             if (gameState != GameState.BUILDING) {
-                p.sendMessage("§cGame has not started yet.");
+
+                if (gameState == GameState.LOBBY) {
+                    p.sendMessage("§cGame has not started yet.");
+                    return true;
+                }
+
+                p.sendMessage("§cYou cannot run this right now!");
                 return true;
             }
 
@@ -225,7 +232,8 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             Bukkit.broadcastMessage("§a+" + seconds + " seconds added!");
 
             return true;
-        } else if (command.getName().equalsIgnoreCase("reset")) {
+        }
+        else if (command.getName().equalsIgnoreCase("reset")) {
 
             if (!p.isOp()) {
                 p.sendMessage("§cNo permission.");
@@ -252,14 +260,52 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             Bukkit.broadcastMessage("§cGame has been reset!");
 
             return true;
-        } else if (command.getName().equalsIgnoreCase("start")) {
+        }
+        else if (command.getName().equalsIgnoreCase("start")) {
 
             if (!p.isOp()) {
                 p.sendMessage("§cNo permission.");
                 return true;
             }
 
+            if (gameState != GameState.LOBBY) {
+                p.sendMessage("§cGame is already in progress.");
+                return true;
+            }
+
             startGame();
+            return true;
+        }
+        else if (command.getName().equalsIgnoreCase("floor")) {
+
+            if (gameState != GameState.BUILDING) {
+                p.sendMessage("§cYou cannot run this right now!");
+                return true;
+            }
+
+            if (p.getItemInHand() == null || p.getItemInHand().getType() == Material.AIR) {
+                p.sendMessage("§cHold a block in your hand.");
+                return true;
+            }
+
+            Material mat = p.getItemInHand().getType();
+
+            if (!mat.isBlock()) {
+                p.sendMessage("§cThat is not a placeable block.");
+                return true;
+            }
+
+            int plotId = plotManager.getPlayerPlot(p);
+
+            if (plotId == 0) {
+                p.sendMessage("§cYou are not inside a plot.");
+                return true;
+            }
+
+            plotManager.setPlotFloor(plotId, mat);
+
+            p.sendMessage("§aPlot floor set to " + mat.name());
+
             return true;
         }
 

@@ -1,9 +1,6 @@
 package org.mintype.buildBattle.plot;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -145,6 +142,31 @@ public class PlotManager {
         );
 
         p.teleport(loc);
+    }
+
+    public void setPlotFloor(int plotId, Material mat) {
+
+        World w = Bukkit.getWorlds().get(0);
+
+        int plotSize = 32;
+        int gap = 10;
+        int gridSize = 6;
+
+        int step = plotSize + gap;
+
+        int gridX = (plotId - 1) % gridSize;
+        int gridZ = (plotId - 1) / gridSize;
+
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        int y = 0; // floor level (change if needed)
+
+        for (int x = 0; x < plotSize; x++) {
+            for (int z = 0; z < plotSize; z++) {
+                w.getBlockAt(startX + x, y, startZ + z).setType(mat);
+            }
+        }
     }
 
     public boolean isInPlot(Location loc) {
