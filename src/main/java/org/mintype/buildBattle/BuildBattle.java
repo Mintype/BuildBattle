@@ -33,8 +33,13 @@ import org.mintype.buildBattle.scoreboard.ScoreboardManagerBB;
 
 public final class BuildBattle extends JavaPlugin implements Listener {
 
+    public static final int GAME_TIME = 10;
     private int countdown = -1;
     private int gameTime = -1; // seconds
+
+    private int voteCountdown = -1;
+    private int voteIndex = 1;
+    private int votePhase = 0; // 0 = waiting, 1 = showing plot
     
     private String theme = "";
 
@@ -88,10 +93,25 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
 
-        p.teleport(getSpawn());
-        if (!p.isOp()) {
+        if(gameState != GameState.LOBBY) {
+            // check if player is apart of the current game
+            int plotID = plotManager.getPlayerPlot(p);
+            // if 0 then they arent in the game
+            if (plotID == 0) {
+                p.teleport(getSpawn());
+                p.setGameMode(GameMode.ADVENTURE);
+            }
+        } else {
+            p.teleport(getSpawn());
             p.setGameMode(GameMode.ADVENTURE);
+            p.getInventory().clear();
+            p.getInventory().setArmorContents(null);
+            p.getInventory().setItemInOffHand(null);
         }
+
+//        if (!p.isOp()) {
+//        p.setGameMode(GameMode.ADVENTURE);
+//        }
 
         scoreboardManager.create(e.getPlayer());
         scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
@@ -115,6 +135,12 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
 
         if (p.isOp()) return;
+
+        if (gameState != GameState.BUILDING) {
+            e.setCancelled(true);
+            p.sendMessage("§cBuilding time is over.");
+            return;
+        }
 
         int plotId = plotManager.getPlotId(e.getBlock().getLocation());
 
@@ -142,6 +168,12 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         if (p.isOp()) return;
 
+        if (gameState != GameState.BUILDING) {
+            e.setCancelled(true);
+            p.sendMessage("§cBuilding time is over.");
+            return;
+        }
+
         int plotId = plotManager.getPlotId(e.getBlock().getLocation());
 
         Bukkit.getLogger().info("[PLACE] player=" + p.getName()
@@ -167,6 +199,12 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         Player p = e.getPlayer();
 
         if (p.isOp()) return;
+
+        if (gameState != GameState.BUILDING) {
+            e.setCancelled(true);
+            p.sendMessage("§cBuilding time is over.");
+            return;
+        }
 
         Action action = e.getAction();
 
@@ -509,7 +547,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
                 Bukkit.broadcastMessage("§aGame started!");
 
-                gameTime = 5 * 60; // 300 seconds
+                gameTime = GAME_TIME; // 300 seconds
 
                 startGameTimer();
                 scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
@@ -538,8 +576,9 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                     return;
                 }
 
-                // TIME UP → end game
-                endGame();
+                // TIME UP → voting
+                startVoting();
+//                endGame();
 
                 cancel();
             }
@@ -547,14 +586,178 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         }.runTaskTimer(this, 0L, 20L); // every 1 second
     }
 
+    private void startVoting() {
+
+        gameState = GameState.VOTING;
+        plotManager.clearAllInventories();
+        Bukkit.broadcastMessage("§cStop building! Its time to vote!");
+
+        voteIndex = 1;
+        votePhase = 0;
+        voteCountdown = 3; // initial delay before first plot
+
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+
+                if (gameState != GameState.VOTING) {
+                    cancel();
+                    return;
+                }
+
+                voteCountdown--;
+
+                if (votePhase == 0) {
+
+                    if (voteCountdown <= 0) {
+                        votePhase = 1;
+                        voteIndex = 1;
+                        voteCountdown = 15;
+
+                        showPlot(voteIndex);
+                    }
+
+                } else {
+
+                    if (voteCountdown <= 0) {
+
+                        voteIndex++;
+
+                        if (voteIndex > plotManager.getActivePlotCount()) {
+                            endGame();
+                            cancel();
+                            return;
+                        }
+
+                        voteCountdown = 15;
+                        showPlot(voteIndex);
+                    }
+                }
+
+                scoreboardManager.updateAll(
+                        gameState,
+                        voteCountdown,
+                        -1,
+                        theme,
+                        plotManager.getTeamSize()
+                );
+
+//                if (gameState != GameState.VOTING) {
+//                    cancel();
+//                    return;
+//                }
+//
+//                // INITIAL WAIT BEFORE FIRST PLOT
+//                if (votePhase == 0) {
+//
+//                    voteCountdown--;
+//
+//                    if (voteCountdown <= 0) {
+//                        votePhase = 1;
+//                        voteCountdown = 15; // show time per plot
+//
+//                        plotManager.teleportAllToPlot(voteIndex);
+//                    }
+//
+//                    scoreboardManager.updateAll(
+//                            gameState,
+//                            voteCountdown,
+//                            -1, // gameTime not used in voting
+//                            theme,
+//                            plotManager.getTeamSize()
+//                    );
+//
+//                    return;
+//                }
+//
+//                // SHOW PLOT TIMER (15 → 0)
+//                voteCountdown--;
+//
+//                if (voteCountdown <= 0) {
+//
+//                    voteIndex++;
+//
+//                    if (voteIndex > plotManager.getActivePlotCount()) {
+//                        endGame();
+//                        cancel();
+//                        return;
+//                    }
+//
+//                    int plotId = voteIndex;
+//
+//                    Bukkit.broadcastMessage("");
+//                    Bukkit.broadcastMessage("§ePlot Voting §7- §a#" + plotId);
+//
+//                    List<Player> players = plotManager.getPlayersInPlot(plotId);
+//
+//                    if (!players.isEmpty()) {
+//                        StringBuilder names = new StringBuilder();
+//
+//                        for (Player p : players) {
+//                            names.append(p.getName()).append(" ");
+//                        }
+//
+//                        Bukkit.broadcastMessage("§7Builders: §f" + names);
+//                    }
+//
+//                    plotManager.teleportAllToPlot(plotId);
+//
+//                    voteCountdown = 15;
+//                }
+//
+//                scoreboardManager.updateAll(
+//                        gameState,
+//                        voteCountdown,
+//                        -1,
+//                        theme,
+//                        plotManager.getTeamSize()
+//                );
+            }
+
+        }.runTaskTimer(this, 0L, 20L);
+    }
+
+    private void showPlot(int plotId) {
+
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§ePlot Voting §7- §a#" + plotId);
+
+        List<Player> players = plotManager.getPlayersInPlot(plotId);
+
+        if (players != null && !players.isEmpty()) {
+
+            StringBuilder names = new StringBuilder();
+
+            for (Player p : players) {
+                names.append(p.getName()).append(" ");
+            }
+
+            Bukkit.broadcastMessage("§7Builders: §f" + names);
+        }
+
+        plotManager.teleportAllToPlot(plotId);
+    }
+
     private void endGame() {
         gameState = GameState.ENDED;
 
         Bukkit.broadcastMessage("§cGame ended!");
 
-        setAllGameMode(GameMode.SPECTATOR);
+        scoreboardManager.updateAll(
+                gameState,
+                countdown,
+                gameTime,
+                theme,
+                plotManager.getTeamSize()
+        );
 
-        scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                forceResetGame();
+            }
+        }.runTaskLater(this, 20L * 5); // 5 seconds
     }
 
     private void forceResetGame() {
@@ -576,7 +779,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     }
 
     private void setAllGameMode(GameMode gameMode) {
-        for (Player p : Bukkit.getOnlinePlayers()) {
+        for (Player p : plotManager.getActivePlayers()) {
             p.setGameMode(gameMode);
         }
     }

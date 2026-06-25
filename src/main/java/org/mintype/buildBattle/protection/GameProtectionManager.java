@@ -264,7 +264,11 @@ public class GameProtectionManager implements Listener {
 
         if (!(e.getDamager() instanceof Player p)) return;
 
-        if (buildBattle.getGameState() != GameState.BUILDING) return;
+        if (buildBattle.getGameState() != GameState.BUILDING) {
+            e.setCancelled(true);
+            return;
+        }
+//        if (buildBattle.getGameState() != GameState.BUILDING) return;
 
         int entityPlot = plotManager.getPlotId(entity.getLocation());
         int playerPlot = plotManager.getPlayerPlot(p);
@@ -283,7 +287,12 @@ public class GameProtectionManager implements Listener {
 
         if (!(e.getDamager() instanceof Player p)) return;
 
-        if (buildBattle.getGameState() != GameState.BUILDING) return;
+        if (buildBattle.getGameState() != GameState.BUILDING) {
+            e.setCancelled(true);
+            return;
+        }
+
+//        if (buildBattle.getGameState() != GameState.BUILDING) return;
 
         int entityPlot = plotManager.getPlotId(entity.getLocation());
         int playerPlot = plotManager.getPlayerPlot(p);

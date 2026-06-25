@@ -116,6 +116,12 @@ public class ScoreboardManagerBB {
                 mode.setPrefix("§aMode: §f" + modeText);
             }
 
+            case VOTING -> {
+                time.setPrefix("§eNext plot in §6" + countdown);
+                theme.setPrefix("§aTheme: §f" + themeName);
+                mode.setPrefix("§aMode: §fVoting");
+            }
+
             case ENDED -> {
                 time.setPrefix("§cGame Ended");
                 theme.setPrefix("§aTheme: §f" + themeName);

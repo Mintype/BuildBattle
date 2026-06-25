@@ -309,6 +309,39 @@ public class PlotManager {
         return gridZ * 6 + gridX + 1;
     }
 
+    public void clearAllInventories() {
+
+        for (List<Player> players : plotPlayers.values()) {
+            for (Player player : players) {
+                player.getInventory().clear();
+                player.getInventory().setArmorContents(null);
+                player.getInventory().setItemInOffHand(null);
+            }
+        }
+    }
+
+    public int getActivePlotCount() {
+        int count = 0;
+
+        for (List<Player> players : plotPlayers.values()) {
+            if (players != null && !players.isEmpty()) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public void teleportAllToPlot(int plotId) {
+        for (Player p : getActivePlayers()) {
+            teleportToPlot(p, plotId);
+        }
+    }
+
+    public List<Player> getActivePlayers() {
+        return new ArrayList<>(playerPlot.keySet());
+    }
+
     public int getPlayerPlot(Player p) {
         return playerPlot.getOrDefault(p, 0);
     }
@@ -319,5 +352,9 @@ public class PlotManager {
 
     public void setTeamSize(int teamSize) {
         this.teamSize = teamSize;
+    }
+
+    public List<Player> getPlayersInPlot(int plotId) {
+        return plotPlayers.get(plotId);
     }
 }
