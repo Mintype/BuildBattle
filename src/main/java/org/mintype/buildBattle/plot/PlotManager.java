@@ -1,0 +1,210 @@
+package org.mintype.buildBattle.plot;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class PlotManager {
+
+    private static final int PLOT_SIZE = 32;
+    private static final int GAP = 10;
+    private static final int GRID_SIZE = 6;
+
+    private static final int MIN_Y = 0;
+    private static final int MAX_Y = 33;
+
+    private final Map<Player, Integer> playerPlot = new HashMap<>();
+    private final Map<Integer, List<Player>> plotPlayers = new HashMap<>();
+
+    private final JavaPlugin plugin;
+
+    public PlotManager(JavaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public void assignPlots() {
+
+        int plotId = 1;
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+
+            if (plotId > 36) {
+                p.sendMessage("§cNo plot available.");
+                continue;
+            }
+
+            playerPlot.put(p, plotId);
+            plotPlayers.get(plotId).add(p);
+
+            teleportToPlot(p, plotId);
+
+            p.sendMessage("§aYou are in plot #" + plotId);
+
+            plotId++;
+        }
+    }
+
+    public void clearPlots() {
+        playerPlot.clear();
+        plotPlayers.clear();
+
+        for (int i = 1; i <= 36; i++) {
+            plotPlayers.put(i, new ArrayList<>());
+        }
+    }
+
+    public void startPlotBorders() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                World world = Bukkit.getWorlds().get(0);
+
+                for (int plotX = 0; plotX < GRID_SIZE; plotX++) {
+                    for (int plotZ = 0; plotZ < GRID_SIZE; plotZ++) {
+
+                        int startX = plotX * (PLOT_SIZE + GAP);
+                        int startZ = plotZ * (PLOT_SIZE + GAP);
+
+                        int endX = startX + PLOT_SIZE;
+                        int endZ = startZ + PLOT_SIZE;
+
+                        drawPlot(world, startX, startZ, endX, endZ);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 10L); // every 0.5 seconds
+    }
+
+    private void drawPlot(World world, int minX, int minZ, int maxX, int maxZ) {
+
+        // Bottom + Top X edges
+        for (double x = minX; x <= maxX; x++) {
+            spawn(world, x, MIN_Y, minZ);
+            spawn(world, x, MIN_Y, maxZ);
+
+            spawn(world, x, MAX_Y, minZ);
+            spawn(world, x, MAX_Y, maxZ);
+        }
+
+        // Bottom + Top Z edges
+        for (double z = minZ; z <= maxZ; z++) {
+            spawn(world, minX, MIN_Y, z);
+            spawn(world, maxX, MIN_Y, z);
+
+            spawn(world, minX, MAX_Y, z);
+            spawn(world, maxX, MAX_Y, z);
+        }
+
+        // Vertical edges
+        for (double y = MIN_Y; y <= MAX_Y; y++) {
+            spawn(world, minX, y, minZ);
+            spawn(world, minX, y, maxZ);
+            spawn(world, maxX, y, minZ);
+            spawn(world, maxX, y, maxZ);
+        }
+    }
+
+    private void spawn(World world, double x, double y, double z) {
+        world.spawnParticle(
+                Particle.END_ROD,
+                x + 0.5,
+                y + 0.5,
+                z + 0.5,
+                1,
+                0,
+                0,
+                0,
+                0
+        );
+    }
+
+    private void teleportToPlot(Player p, int plotId) {
+
+        int step = PLOT_SIZE + GAP;
+
+        int gridX = (plotId - 1) % 6;
+        int gridZ = (plotId - 1) / 6;
+
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        Location loc = new Location(
+                Bukkit.getWorlds().get(0),
+                startX + (PLOT_SIZE / 2.0),
+                1,
+                startZ + (PLOT_SIZE / 2.0)
+        );
+
+        p.teleport(loc);
+    }
+
+    public boolean isInPlot(Location loc) {
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+
+        // Y restriction (inclusive 0–33)
+        if (y < 0 || y > 33) return false;
+
+        if (x < 0 || z < 0) return false;
+
+        int step = PLOT_SIZE + GAP;
+
+        int gridX = x / step;
+        int gridZ = z / step;
+
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        int endX = startX + PLOT_SIZE;
+        int endZ = startZ + PLOT_SIZE;
+
+        return x >= startX && x < endX &&
+                z >= startZ && z < endZ;
+    }
+
+    public int getPlotId(Location loc) {
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+
+        // Y restriction (0–33 inclusive)
+        if (y < 0 || y > 33) return 0;
+
+        if (x < 0 || z < 0) return 0;
+
+        int step = PLOT_SIZE + GAP;
+
+        int gridX = x / step;
+        int gridZ = z / step;
+
+        // check if inside actual plot area (not gap)
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        int endX = startX + PLOT_SIZE;
+        int endZ = startZ + PLOT_SIZE;
+
+        boolean inside =
+                x >= startX && x < endX &&
+                        z >= startZ && z < endZ;
+
+        if (!inside) return 0;
+
+        // convert 2D grid → 1–36 index
+        return gridZ * 6 + gridX + 1;
+    }
+
+    public int getPlayerPlot(Player p) {
+        return playerPlot.getOrDefault(p, 0);
+    }
+}
