@@ -22,29 +22,62 @@ public class PlotManager {
     private final Map<Player, Integer> playerPlot = new HashMap<>();
     private final Map<Integer, List<Player>> plotPlayers = new HashMap<>();
 
+    private int teamSize = 1;
+
     private final JavaPlugin plugin;
 
     public PlotManager(JavaPlugin plugin) {
         this.plugin = plugin;
     }
 
+//    public void assignPlots() {
+//
+//        int plotId = 1;
+//
+//        for (Player p : Bukkit.getOnlinePlayers()) {
+//
+//            if (plotId > 36) {
+//                p.sendMessage("§cNo plot available.");
+//                continue;
+//            }
+//
+//            playerPlot.put(p, plotId);
+//            plotPlayers.get(plotId).add(p);
+//
+//            teleportToPlot(p, plotId);
+//
+//            p.sendMessage("§aYou are in plot #" + plotId);
+//
+//            plotId++;
+//        }
+//    }
+
     public void assignPlots() {
 
+        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
         int plotId = 1;
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
+        java.util.Collections.shuffle(players);
+
+        for (int i = 0; i < players.size(); i += teamSize) {
 
             if (plotId > 36) {
-                p.sendMessage("§cNo plot available.");
+                players.get(i).sendMessage("§cNo plot available.");
                 continue;
             }
 
-            playerPlot.put(p, plotId);
-            plotPlayers.get(plotId).add(p);
+            int end = Math.min(i + teamSize, players.size());
+            List<Player> group = players.subList(i, end);
 
-            teleportToPlot(p, plotId);
+            plotPlayers.putIfAbsent(plotId, new ArrayList<>());
 
-            p.sendMessage("§aYou are in plot #" + plotId);
+            for (Player p : group) {
+                playerPlot.put(p, plotId);
+                plotPlayers.get(plotId).add(p);
+
+                teleportToPlot(p, plotId);
+                p.sendMessage("§aYou are in plot #" + plotId);
+            }
 
             plotId++;
         }
@@ -228,5 +261,13 @@ public class PlotManager {
 
     public int getPlayerPlot(Player p) {
         return playerPlot.getOrDefault(p, 0);
+    }
+
+    public int getTeamSize() {
+        return teamSize;
+    }
+
+    public void setTeamSize(int teamSize) {
+        this.teamSize = teamSize;
     }
 }

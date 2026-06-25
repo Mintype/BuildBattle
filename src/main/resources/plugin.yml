@@ -21,3 +21,6 @@ commands:
   floor:
     description: Sets your plot floor to the block you're holding
     usage: /floor
+
+  teamsize:
+    description: Sets the size of teams

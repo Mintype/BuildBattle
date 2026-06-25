@@ -26,35 +26,46 @@ public class ScoreboardManagerBB {
 
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-        obj.getScore("§7 ").setScore(6);
+        obj.getScore("§7 ").setScore(8);
 
-        obj.getScore("§aPlayers:").setScore(5);
-        obj.getScore("§bStatus:").setScore(4);
-
-        obj.getScore("§7  ").setScore(3);
-
-        obj.getScore("§emode.rumc.club").setScore(2);
-
-        // --- dynamic holders ---
+// Players
         Team players = board.registerNewTeam("players");
         players.addEntry("§p");
-        obj.getScore("§p").setScore(5);
+        players.setPrefix("§aPlayers: §f");
+        obj.getScore("§p").setScore(7);
 
-        Team status = board.registerNewTeam("status");
-        status.addEntry("§s");
-        obj.getScore("§s").setScore(4);
+        obj.getScore("§7  ").setScore(6);
+
+// Time
+        Team time = board.registerNewTeam("time");
+        time.addEntry("§t");
+        obj.getScore("§t").setScore(5);
+
+// Theme
+        Team theme = board.registerNewTeam("theme");
+        theme.addEntry("§h");
+        obj.getScore("§h").setScore(4);
+
+// Mode
+        Team mode = board.registerNewTeam("mode");
+        mode.addEntry("§m");
+        obj.getScore("§m").setScore(3);
+
+        obj.getScore("§7   ").setScore(2);
+
+        obj.getScore("§emode.rumc.club").setScore(1);
 
         boards.put(p.getUniqueId(), board);
         p.setScoreboard(board);
     }
 
-    public void updateAll(GameState state, int countdown, int gameTime) {
+    public void updateAll(GameState state, int countdown, int gameTime, String theme, int teamSize) {
         for (Player p : Bukkit.getOnlinePlayers()) {
-            update(p, state, countdown, gameTime);
+            update(p, state, countdown, gameTime, theme, teamSize);
         }
     }
 
-    public void update(Player p, GameState state, int countdown, int gameTime) {
+    public void update(Player p, GameState state, int countdown, int gameTime, String themeName, int teamSize) {
 
         Scoreboard board = boards.get(p.getUniqueId());
         if (board == null) {
@@ -64,28 +75,55 @@ public class ScoreboardManagerBB {
 
         int online = Bukkit.getOnlinePlayers().size();
 
+        // Players
         Team players = board.getTeam("players");
         if (players != null) {
-            players.setPrefix("§f" + online + "/" + Bukkit.getMaxPlayers());
+            players.setSuffix(online + "/" + Bukkit.getMaxPlayers());
         }
 
-        Team status = board.getTeam("status");
-        if (status != null) {
+        Team time = board.getTeam("time");
+        Team theme = board.getTeam("theme");
+        Team mode = board.getTeam("mode");
 
-            switch (state) {
+        if (time == null || theme == null || mode == null) return;
 
-                case LOBBY -> status.setPrefix("§eWaiting for host");
+        String modeText = (teamSize > 1)
+                ? "Teams (" + teamSize + ")"
+                : "Solo";
 
-                case STARTING -> status.setPrefix("§eStarting in §6" + countdown);
+        switch (state) {
 
-                case BUILDING -> {
-                    int min = gameTime / 60;
-                    int sec = gameTime % 60;
-                    status.setPrefix("§eTime: §a" + min + ":" + String.format("%02d", sec));
-                }
+            case LOBBY -> {
+                time.setPrefix("§eWaiting...");
+                theme.setPrefix("§7Theme: §fTBD");
+                mode.setPrefix("§aMode: §f" + modeText);
+            }
 
-                case ENDED -> status.setPrefix("§cGame ended");
+            case STARTING -> {
+                time.setPrefix("§eStarting in §6" + countdown);
+                theme.setPrefix("§7Theme: §fTBD");
+                mode.setPrefix("§aMode: §f" + modeText);
+            }
+
+            case BUILDING -> {
+                int min = gameTime / 60;
+                int sec = gameTime % 60;
+
+                time.setPrefix("§aTime: §f" + min + ":" + String.format("%02d", sec));
+                theme.setPrefix("§dTheme: §f" + themeName);
+                mode.setPrefix("§aMode: §f" + modeText);
+            }
+
+            case ENDED -> {
+                time.setPrefix("§cGame Ended");
+                theme.setPrefix("§dTheme: §f" + themeName);
+                mode.setPrefix("§aMode: §f" + modeText);
             }
         }
+    }
+
+    public void remove(Player p) {
+        boards.remove(p.getUniqueId());
+        p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
     }
 }

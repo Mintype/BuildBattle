@@ -32,6 +32,8 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
     private int countdown = -1;
     private int gameTime = -1; // seconds
+    
+    private String theme = "";
 
     private final HashSet<UUID> nightVisionPlayers = new HashSet<>();
 
@@ -68,12 +70,13 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         }
 
         scoreboardManager.create(e.getPlayer());
-        scoreboardManager.updateAll(gameState, countdown, gameTime);
+        scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
-        scoreboardManager.updateAll(gameState, countdown, gameTime);
+        scoreboardManager.remove(e.getPlayer());
+        scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
     }
 
     @EventHandler
@@ -113,6 +116,12 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             return;
         }
 
+        if (plotId != plotManager.getPlayerPlot(p)) {
+            e.setCancelled(true);
+            p.sendMessage("§cYou cannot break other plots.");
+            return;
+        }
+
         p.sendMessage("§aBreaking in plot #" + plotId);
     }
 
@@ -133,6 +142,12 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             return;
         }
 
+        if (plotId != plotManager.getPlayerPlot(p)) {
+            e.setCancelled(true);
+            p.sendMessage("§cYou cannot build in other plots.");
+            return;
+        }
+
         p.sendMessage("§aBuilding in plot #" + plotId);
     }
 
@@ -143,6 +158,18 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         if (p.isOp()) return;
 
         Action action = e.getAction();
+
+        if (e.getClickedBlock() != null && plotManager.getPlotId(e.getClickedBlock().getLocation().clone().add(0, 1, 0)) == 0) {
+            e.setCancelled(true);
+            p.sendMessage("§cYou cannot break outside plots.");
+            return;
+        }
+
+        if (e.getClickedBlock() != null && plotManager.getPlotId(e.getClickedBlock().getLocation().clone().add(0, 1, 0)) != plotManager.getPlayerPlot(p)) {
+            e.setCancelled(true);
+            p.sendMessage("§cYou cannot interact with other plots.");
+            return;
+        }
 
         // Only care about right click actions
         if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR) return;
@@ -243,8 +270,9 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             gameState = GameState.LOBBY;
             countdown = -1;
             gameTime = -1;
+            theme = "";
 
-            scoreboardManager.updateAll(gameState, countdown, gameTime);
+            scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
 
             nightVisionPlayers.clear();
 
@@ -254,7 +282,6 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 pl.setGameMode(GameMode.ADVENTURE);
                 pl.getInventory().clear();
                 pl.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
-                pl.removePotionEffect(PotionEffectType.NIGHT_VISION);
             }
 
             Bukkit.broadcastMessage("§cGame has been reset!");
@@ -270,6 +297,11 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
             if (gameState != GameState.LOBBY) {
                 p.sendMessage("§cGame is already in progress.");
+                return true;
+            }
+
+            if (Bukkit.getOnlinePlayers().size() < 2) {
+                p.sendMessage("§cYou need at least 2 players to start the game.");
                 return true;
             }
 
@@ -298,13 +330,51 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             int plotId = plotManager.getPlayerPlot(p);
 
             if (plotId == 0) {
-                p.sendMessage("§cYou are not inside a plot.");
+                p.sendMessage("§cYou do not have a plot.");
                 return true;
             }
 
             plotManager.setPlotFloor(plotId, mat);
 
             p.sendMessage("§aPlot floor set to " + mat.name());
+
+            return true;
+        }
+        else if  (command.getName().equalsIgnoreCase("teamsize")) {
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
+            if (args.length != 1) {
+                p.sendMessage("§cUsage: /teamsize <size>");
+                return true;
+            }
+
+            if (gameState != GameState.LOBBY) {
+                p.sendMessage("§cYou cannot run this right now!");
+                return true;
+            }
+
+            int teamSize;
+
+            try {
+                teamSize = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cInvalid number.");
+                return true;
+            }
+
+            if (teamSize <= 0 || teamSize > 18) {
+                p.sendMessage("§cInvalid size range.");
+                return true;
+            }
+
+            plotManager.setTeamSize(teamSize);
+
+            scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
+
+            Bukkit.broadcastMessage("§aTeam size set to " + teamSize + ".");
 
             return true;
         }
@@ -318,7 +388,6 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         countdown = 5;
 
-//        clearPlots();
         plotManager.clearPlots();
 
         new BukkitRunnable() {
@@ -352,7 +421,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                         );
                     }
 
-                    scoreboardManager.updateAll(gameState, countdown, gameTime);
+                    scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
                     return;
                 }
                 gameState = GameState.BUILDING;
@@ -363,7 +432,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 gameTime = 5 * 60; // 300 seconds
 
                 startGameTimer();
-                scoreboardManager.updateAll(gameState, countdown, gameTime);
+                scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
                 cancel();
             }
         }.runTaskTimer(this, 0L, 20L);
@@ -385,7 +454,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 // tick down game time
                 if (gameTime > 0) {
                     gameTime--;
-                    scoreboardManager.updateAll(gameState, countdown, gameTime);
+                    scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
                     return;
                 }
 
@@ -405,7 +474,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         setAllGameMode(GameMode.SPECTATOR);
 
-        scoreboardManager.updateAll(gameState, countdown, gameTime);
+        scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
     }
 
     private void setAllGameMode(GameMode gameMode) {
@@ -413,31 +482,4 @@ public final class BuildBattle extends JavaPlugin implements Listener {
             p.setGameMode(gameMode);
         }
     }
-
-//    public void addGameTime(int seconds) {
-//        if (gameState != GameState.BUILDING) return;
-//
-//        gameTime += seconds;
-//
-//        Bukkit.broadcastMessage("§a+" + seconds + " seconds added to build time!");
-//        scoreboardManager.updateAll(gameState, countdown, gameTime);
-//    }
-//
-//    public void resetGame() {
-//
-//        gameState = GameState.LOBBY;
-//        countdown = -1;
-//        gameTime = -1;
-//
-//        Bukkit.broadcastMessage("§cGame reset!");
-//
-//        for (Player p : Bukkit.getOnlinePlayers()) {
-//            p.setGameMode(GameMode.ADVENTURE);
-//            plotManager.teleportToPlot(p, 0); // optional spawn fallback
-//
-//        }
-//
-//        plotManager.clearPlots();
-//        scoreboardManager.updateAll(gameState, countdown, gameTime);
-//    }
 }
