@@ -8,6 +8,8 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 
 public class GameProtectionManager implements Listener {
@@ -64,6 +66,39 @@ public class GameProtectionManager implements Listener {
     public void onPortalCreate(PortalCreateEvent e) {
         if (off()) return;
         e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onFrameInsert(PlayerInteractEvent e) {
+        if (off()) return;
+
+        if (e.getClickedBlock() == null || e.getItem() == null) return;
+
+        if (e.getClickedBlock().getType() == Material.END_PORTAL_FRAME &&
+                e.getItem().getType() == Material.ENDER_EYE) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onUseEye(PlayerInteractEvent e) {
+        if (off()) return;
+
+        if (e.getClickedBlock() == null || e.getItem() == null) return;
+
+        if (e.getClickedBlock().getType() == Material.END_PORTAL_FRAME &&
+                e.getItem().getType() == Material.ENDER_EYE) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPearl(PlayerTeleportEvent e) {
+        if (off()) return;
+
+        if (e.getCause() == PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
+            e.setCancelled(true);
+        }
     }
 
 //    // ENDER CRYSTALS
@@ -209,5 +244,68 @@ public class GameProtectionManager implements Listener {
         }
     }
 
+    @EventHandler
+    public void onSpawn(CreatureSpawnEvent e) {
+        if (off()) return;
 
+        if (e.getEntity() instanceof Wither) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onWitherSkull(EntityDamageByEntityEvent e) {
+        if (off()) return;
+
+        if (e.getDamager() instanceof WitherSkull) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onConsume(PlayerItemConsumeEvent e) {
+        if (off()) return;
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPotionThrow(PlayerInteractEvent e) {
+        if (off()) return;
+
+        if (e.getItem() == null) return;
+
+        Material t = e.getItem().getType();
+
+        if (t == Material.SPLASH_POTION ||
+                t == Material.LINGERING_POTION ||
+                t == Material.ENDER_PEARL ||
+                t == Material.EXPERIENCE_BOTTLE) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onBowShoot(EntityShootBowEvent e) {
+        if (off()) return;
+
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onProjectileLaunch(ProjectileLaunchEvent e) {
+        if (off()) return;
+
+        if (e.getEntity() instanceof Arrow ||
+                e.getEntity() instanceof SpectralArrow ||
+                e.getEntity() instanceof Snowball ||
+                e.getEntity() instanceof Egg) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onProjectileHit(ProjectileHitEvent e) {
+        if (off()) return;
+        e.getEntity().remove();
+    }
 }
