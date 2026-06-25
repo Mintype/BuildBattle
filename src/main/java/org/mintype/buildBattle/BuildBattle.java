@@ -215,6 +215,11 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 return true;
             }
 
+            if (seconds <= 0 || seconds > 3600) {
+                p.sendMessage("§cInvalid time range.");
+                return true;
+            }
+
             gameTime += seconds; // make sure gameTime is your field
 
             Bukkit.broadcastMessage("§a+" + seconds + " seconds added!");
@@ -265,7 +270,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         if (gameState != GameState.LOBBY) return;
         gameState = GameState.STARTING;
 
-        countdown = 10;
+        countdown = 5;
 
 //        clearPlots();
         plotManager.clearPlots();
