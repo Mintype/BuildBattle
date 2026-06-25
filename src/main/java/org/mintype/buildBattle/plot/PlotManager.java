@@ -1,6 +1,7 @@
 package org.mintype.buildBattle.plot;
 
 import org.bukkit.*;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -19,6 +20,8 @@ public class PlotManager {
     private static final int MIN_Y = 0;
     private static final int MAX_Y = 33;
 
+    private static final Material DEFAULT_FLOOR = Material.WHITE_TERRACOTTA;
+
     private final Map<Player, Integer> playerPlot = new HashMap<>();
     private final Map<Integer, List<Player>> plotPlayers = new HashMap<>();
 
@@ -29,28 +32,6 @@ public class PlotManager {
     public PlotManager(JavaPlugin plugin) {
         this.plugin = plugin;
     }
-
-//    public void assignPlots() {
-//
-//        int plotId = 1;
-//
-//        for (Player p : Bukkit.getOnlinePlayers()) {
-//
-//            if (plotId > 36) {
-//                p.sendMessage("§cNo plot available.");
-//                continue;
-//            }
-//
-//            playerPlot.put(p, plotId);
-//            plotPlayers.get(plotId).add(p);
-//
-//            teleportToPlot(p, plotId);
-//
-//            p.sendMessage("§aYou are in plot #" + plotId);
-//
-//            plotId++;
-//        }
-//    }
 
     public void assignPlots() {
 
@@ -89,6 +70,75 @@ public class PlotManager {
 
         for (int i = 1; i <= 36; i++) {
             plotPlayers.put(i, new ArrayList<>());
+        }
+    }
+
+    private int[] getPlotBounds(int plotId) {
+
+        int step = PLOT_SIZE + GAP;
+
+        int gridX = (plotId - 1) % GRID_SIZE;
+        int gridZ = (plotId - 1) / GRID_SIZE;
+
+        int startX = gridX * step;
+        int startZ = gridZ * step;
+
+        int endX = startX + PLOT_SIZE;
+        int endZ = startZ + PLOT_SIZE;
+
+        return new int[]{startX, endX, startZ, endZ};
+    }
+
+    public void resetPlot(int plotId) {
+
+        World w = Bukkit.getWorlds().get(0);
+
+        int[] b = getPlotBounds(plotId);
+        int startX = b[0];
+        int endX = b[1];
+        int startZ = b[2];
+        int endZ = b[3];
+
+        // 1. clear blocks + reset floor
+        for (int x = startX; x < endX; x++) {
+            for (int z = startZ; z < endZ; z++) {
+                for (int y = MIN_Y; y <= MAX_Y; y++) {
+
+                    if (y == 0) {
+                        w.getBlockAt(x, y, z).setType(DEFAULT_FLOOR);
+                    } else {
+                        w.getBlockAt(x, y, z).setType(Material.AIR);
+                    }
+                }
+            }
+        }
+
+        // 2. remove entities inside plot
+        for (Entity entity : w.getEntities()) {
+            Location loc = entity.getLocation();
+
+            if (loc.getBlockX() >= startX && loc.getBlockX() < endX &&
+                    loc.getBlockZ() >= startZ && loc.getBlockZ() < endZ) {
+
+                if (entity instanceof Player) continue;
+
+                entity.remove();
+            }
+        }
+
+//        // 3. clear player tracking for this plot
+//        List<Player> players = plotPlayers.getOrDefault(plotId, new ArrayList<>());
+//
+//        for (Player p : players) {
+//            playerPlot.remove(p);
+//        }
+//
+//        plotPlayers.put(plotId, new ArrayList<>());
+    }
+
+    public void resetAllPlots() {
+        for (int i = 1; i <= 36; i++) {
+            resetPlot(i);
         }
     }
 

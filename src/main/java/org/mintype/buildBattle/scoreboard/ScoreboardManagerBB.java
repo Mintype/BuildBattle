@@ -21,7 +21,7 @@ public class ScoreboardManagerBB {
         Objective obj = board.registerNewObjective(
                 "bb",
                 "dummy",
-                ChatColor.GREEN + "" + ChatColor.BOLD + "Build Battle"
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "RU Build Battle"
         );
 
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -43,8 +43,8 @@ public class ScoreboardManagerBB {
 
 // Theme
         Team theme = board.registerNewTeam("theme");
-        theme.addEntry("§h");
-        obj.getScore("§h").setScore(4);
+        theme.addEntry("§a");
+        obj.getScore("§a").setScore(4);
 
 // Mode
         Team mode = board.registerNewTeam("mode");
@@ -91,17 +91,19 @@ public class ScoreboardManagerBB {
                 ? "Teams (" + teamSize + ")"
                 : "Solo";
 
+        themeName = themeName.isEmpty() ? "TBD" : themeName;
+
         switch (state) {
 
             case LOBBY -> {
                 time.setPrefix("§eWaiting...");
-                theme.setPrefix("§7Theme: §fTBD");
+                theme.setPrefix("§aTheme: §f" + themeName);
                 mode.setPrefix("§aMode: §f" + modeText);
             }
 
             case STARTING -> {
                 time.setPrefix("§eStarting in §6" + countdown);
-                theme.setPrefix("§7Theme: §fTBD");
+                theme.setPrefix("§aTheme: §f" + themeName);
                 mode.setPrefix("§aMode: §f" + modeText);
             }
 
@@ -110,13 +112,13 @@ public class ScoreboardManagerBB {
                 int sec = gameTime % 60;
 
                 time.setPrefix("§aTime: §f" + min + ":" + String.format("%02d", sec));
-                theme.setPrefix("§dTheme: §f" + themeName);
+                theme.setPrefix("§aTheme: §f" + themeName);
                 mode.setPrefix("§aMode: §f" + modeText);
             }
 
             case ENDED -> {
                 time.setPrefix("§cGame Ended");
-                theme.setPrefix("§dTheme: §f" + themeName);
+                theme.setPrefix("§aTheme: §f" + themeName);
                 mode.setPrefix("§aMode: §f" + modeText);
             }
         }

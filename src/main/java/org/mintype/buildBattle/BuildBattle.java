@@ -3,6 +3,8 @@ package org.mintype.buildBattle;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,6 +21,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import org.bukkit.scoreboard.*;
 
+import java.io.File;
 import java.util.*;
 
 import org.bukkit.potion.PotionEffect;
@@ -43,16 +46,37 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
     private GameState gameState = GameState.LOBBY;
 
+    private FileConfiguration themesConfig;
+
     @Override
     public void onEnable() {
-        protectionManager = new GameProtectionManager();
         scoreboardManager = new ScoreboardManagerBB();
         plotManager = new PlotManager(this);
+        protectionManager = new GameProtectionManager(this, plotManager);
 
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(protectionManager, this);
 
         plotManager.startPlotBorders();
+
+        loadThemes();
+
+
+    }
+
+    private void loadThemes() {
+        saveResource("themes.yml", false); // copies from jar to plugins folder if missing
+        themesConfig = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "themes.yml"));
+    }
+
+    public String getRandomTheme() {
+        List<String> themes = themesConfig.getStringList("random-themes");
+
+        if (themes.isEmpty()) {
+            return "Rutgers";
+        }
+
+        return themes.get(new Random().nextInt(themes.size()));
     }
 
     private Location getSpawn() {
@@ -84,19 +108,6 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () ->
                 e.getPlayer().teleport(getSpawn())
         );
-    }
-
-    @EventHandler
-    public void onDamage(EntityDamageEvent e) {
-        if (e.getEntity() instanceof Player) {
-            e.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onHunger(FoodLevelChangeEvent e) {
-        e.setFoodLevel(20);
-        e.setCancelled(true);
     }
 
     @EventHandler
@@ -267,22 +278,7 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                 return true;
             }
 
-            gameState = GameState.LOBBY;
-            countdown = -1;
-            gameTime = -1;
-            theme = "";
-
-            scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
-
-            nightVisionPlayers.clear();
-
-            plotManager.clearPlots();
-
-            for (Player pl : Bukkit.getOnlinePlayers()) {
-                pl.setGameMode(GameMode.ADVENTURE);
-                pl.getInventory().clear();
-                pl.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
-            }
+            forceResetGame();
 
             Bukkit.broadcastMessage("§cGame has been reset!");
 
@@ -378,6 +374,84 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
             return true;
         }
+        else if (command.getName().equalsIgnoreCase("theme")) {
+
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
+            if (gameState != GameState.LOBBY) {
+                p.sendMessage("§cYou cannot run this right now!");
+                return true;
+            }
+
+            if (args.length == 0) {
+                p.sendMessage("§cUsage: /theme set <theme> | /theme random | /theme reset");
+                return true;
+            }
+
+            switch (args[0].toLowerCase()) {
+
+                case "set":
+                    if (args.length < 2) {
+                        p.sendMessage("§cUsage: /theme set <theme>");
+                        return true;
+                    }
+
+                    this.theme = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+                    Bukkit.broadcastMessage("§aTheme set to §e" + this.theme);
+                    break;
+
+                case "random":
+                    this.theme = getRandomTheme();
+                    Bukkit.broadcastMessage("§aTheme randomly set to §e" + this.theme);
+                    break;
+
+                case "reset":
+                    this.theme = "";
+                    Bukkit.broadcastMessage("§aTheme reset.");
+                    break;
+
+                default:
+                    p.sendMessage("§cUsage: /theme set <theme> | /theme random | /theme reset");
+                    return true;
+            }
+
+            scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
+            return true;
+        }
+        else if  (command.getName().equalsIgnoreCase("resetplot")) {
+            if (!p.isOp()) {
+                p.sendMessage("§cNo permission.");
+                return true;
+            }
+
+            if (args.length != 1) {
+                p.sendMessage("§cUsage: /resetplot <id>");
+                return true;
+            }
+
+            int plotID;
+
+            try {
+                plotID = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cInvalid number.");
+                return true;
+            }
+
+            if (plotID <= 0 || plotID > 36) {
+                p.sendMessage("§cInvalid size range.");
+                return true;
+            }
+
+            plotManager.resetPlot(plotID);
+
+            Bukkit.broadcastMessage("§aReset plot " + plotID + ".");
+
+            return true;
+        }
 
         return false;
     }
@@ -385,6 +459,11 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     private void startGame() {
         if (gameState != GameState.LOBBY) return;
         gameState = GameState.STARTING;
+
+        if (theme.isEmpty()) {
+            theme = getRandomTheme();
+            Bukkit.broadcastMessage("§aTheme: §e" + theme);
+        }
 
         countdown = 5;
 
@@ -419,9 +498,10 @@ public final class BuildBattle extends JavaPlugin implements Listener {
                                 10,
                                 2
                         );
+                        scoreboardManager.update(p, gameState, countdown, gameTime, theme, plotManager.getTeamSize());
                     }
 
-                    scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
+//                    scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
                     return;
                 }
                 gameState = GameState.BUILDING;
@@ -477,9 +557,31 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
     }
 
+    private void forceResetGame() {
+        gameState = GameState.LOBBY;
+        countdown = -1;
+        gameTime = -1;
+        theme = "";
+
+        scoreboardManager.updateAll(gameState, countdown, gameTime, theme, plotManager.getTeamSize());
+
+        plotManager.clearPlots();
+        plotManager.resetAllPlots();
+
+        for (Player pl : Bukkit.getOnlinePlayers()) {
+            pl.setGameMode(GameMode.ADVENTURE);
+            pl.getInventory().clear();
+            pl.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
+        }
+    }
+
     private void setAllGameMode(GameMode gameMode) {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.setGameMode(gameMode);
         }
+    }
+
+    public GameState getGameState() {
+        return gameState;
     }
 }

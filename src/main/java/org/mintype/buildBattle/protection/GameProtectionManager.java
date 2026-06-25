@@ -11,8 +11,19 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
+import org.mintype.buildBattle.BuildBattle;
+import org.mintype.buildBattle.game.GameState;
+import org.mintype.buildBattle.plot.PlotManager;
 
 public class GameProtectionManager implements Listener {
+
+    private BuildBattle buildBattle;
+    private PlotManager plotManager;
+
+    public GameProtectionManager(BuildBattle buildBattle, PlotManager plotManager) {
+        this.buildBattle = buildBattle;
+        this.plotManager = plotManager;
+    }
 
     // toggle if needed later
     private boolean enabled = true;
@@ -245,12 +256,98 @@ public class GameProtectionManager implements Listener {
     }
 
     @EventHandler
+    public void onMobHit(EntityDamageByEntityEvent e) {
+        if (off()) return;
+
+        if (!(e.getEntity() instanceof LivingEntity entity)) return;
+        if (entity instanceof Player) return;
+
+        if (!(e.getDamager() instanceof Player p)) return;
+
+        if (buildBattle.getGameState() != GameState.BUILDING) return;
+
+        int entityPlot = plotManager.getPlotId(entity.getLocation());
+        int playerPlot = plotManager.getPlayerPlot(p);
+
+        if (entityPlot == playerPlot) {
+            entity.setHealth(0.0);
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamage(EntityDamageByEntityEvent e) {
+        if (off()) return;
+
+        if (!(e.getEntity() instanceof LivingEntity entity)) return;
+        if (entity instanceof Player) return;
+
+        if (!(e.getDamager() instanceof Player p)) return;
+
+        if (buildBattle.getGameState() != GameState.BUILDING) return;
+
+        int entityPlot = plotManager.getPlotId(entity.getLocation());
+        int playerPlot = plotManager.getPlayerPlot(p);
+
+        // invalid safety
+        if (entityPlot == -1 || playerPlot == -1) {
+            e.setCancelled(true);
+            return;
+        }
+
+        // not same plot → block ALL damage
+        if (entityPlot != playerPlot) {
+            e.setCancelled(true);
+            return;
+        }
+
+        // ✔ same plot → allow your logic or instant kill
+        entity.setHealth(0.0);
+    }
+
+    @EventHandler
     public void onSpawn(CreatureSpawnEvent e) {
         if (off()) return;
 
-        if (e.getEntity() instanceof Wither) {
+        LivingEntity entity = e.getEntity();
+
+        if (entity instanceof Wither) {
             e.setCancelled(true);
+            return;
         }
+
+        entity.setAI(false);
+        entity.setSilent(true);
+        entity.setGravity(false);
+    }
+
+    @EventHandler
+    public void onBlockBreakByEntity(EntityChangeBlockEvent e) {
+        if (off()) return;
+
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent e) {
+        if (off()) return;
+
+        e.setDropItems(false);
+    }
+
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent e) {
+        if (off()) return;
+
+        e.getDrops().clear();
+        e.setDroppedExp(0);
+    }
+
+
+    @EventHandler
+    public void onItemSpawn(ItemSpawnEvent e) {
+        if (off()) return;
+
+        e.setCancelled(true);
     }
 
     @EventHandler
@@ -308,4 +405,19 @@ public class GameProtectionManager implements Listener {
         if (off()) return;
         e.getEntity().remove();
     }
+
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onHunger(FoodLevelChangeEvent e) {
+        e.setFoodLevel(20);
+        e.setCancelled(true);
+    }
+
+
 }

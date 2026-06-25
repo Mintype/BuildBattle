@@ -24,3 +24,10 @@ commands:
 
   teamsize:
     description: Sets the size of teams
+
+  theme:
+    description: Manage game theme
+    usage: /theme set <theme> | /theme random | /theme reset
+
+  resetplot:
+    description: resets a plot by id.
