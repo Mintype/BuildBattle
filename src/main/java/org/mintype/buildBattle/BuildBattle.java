@@ -20,6 +20,14 @@ import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import org.bukkit.scoreboard.*;
+import org.bukkit.ChatColor;
+
+import java.util.HashSet;
+import java.util.UUID;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+
 public final class BuildBattle extends JavaPlugin implements Listener {
 
     private static final int PLOT_SIZE = 32;
@@ -29,11 +37,19 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     private static final int MIN_Y = 0;
     private static final int MAX_Y = 33;
 
+    private final HashSet<UUID> nightVisionPlayers = new HashSet<>();
+
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
 
         startPlotBorders();
+
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                giveScoreboard(p);
+            }
+        }, 0L, 20L);
     }
 
     private Location getSpawn() {
@@ -44,6 +60,9 @@ public final class BuildBattle extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
+
+        giveScoreboard(p);
+
         p.teleport(getSpawn());
         if (!p.isOp()) {
             p.setGameMode(GameMode.ADVENTURE);
@@ -110,14 +129,14 @@ public final class BuildBattle extends JavaPlugin implements Listener {
         p.sendMessage("§aBuilding in plot #" + plotId);
     }
 
-//    @EventHandler
-//    public void onInteract(PlayerInteractEvent e) {
-//        Player p = e.getPlayer();
-//
-//        if (!p.isOp()) {
-//            e.setCancelled(true);
-//        }
-//    }
+    @EventHandler
+    public void onInteract(PlayerInteractEvent e) {
+        Player p = e.getPlayer();
+
+        if (!p.isOp()) {
+            e.setCancelled(true);
+        }
+    }
 
     private void startPlotBorders() {
         new BukkitRunnable() {
@@ -239,5 +258,29 @@ public final class BuildBattle extends JavaPlugin implements Listener {
 
         // convert 2D grid → 1–36 index
         return gridZ * 6 + gridX + 1;
+    }
+
+    private void giveScoreboard(Player p) {
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        Scoreboard board = manager.getNewScoreboard();
+
+        Objective obj = board.registerNewObjective(
+                "bb",
+                "dummy",
+                ChatColor.GREEN + "" + ChatColor.BOLD + "Build Battle"
+        );
+
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        int online = Bukkit.getOnlinePlayers().size();
+
+        obj.getScore("§7 ").setScore(6);
+        obj.getScore("§aPlayers: §f" + online + "/" + Bukkit.getMaxPlayers()).setScore(5);
+        obj.getScore("§eWaiting for host").setScore(4);
+        obj.getScore("§bMode: §fSolo").setScore(3);
+        obj.getScore("§7  ").setScore(2);
+        obj.getScore("§eevents.rumc.club").setScore(1);
+
+        p.setScoreboard(board);
     }
 }
