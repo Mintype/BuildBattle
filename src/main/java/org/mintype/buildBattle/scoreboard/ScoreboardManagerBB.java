@@ -53,7 +53,7 @@ public class ScoreboardManagerBB {
 
         obj.getScore("§7   ").setScore(2);
 
-        obj.getScore("§emode.rumc.club").setScore(1);
+        obj.getScore("§eevents.rumc.club").setScore(1);
 
         boards.put(p.getUniqueId(), board);
         p.setScoreboard(board);
@@ -111,7 +111,19 @@ public class ScoreboardManagerBB {
                 int min = gameTime / 60;
                 int sec = gameTime % 60;
 
-                time.setPrefix("§aTime: §f" + min + ":" + String.format("%02d", sec));
+                String timeColor;
+
+                if (gameTime <= 30) {
+                    timeColor = "§c"; // red
+                } else if (gameTime <= 60) {
+                    timeColor = "§6"; // orange/gold
+                } else if (gameTime <= 120) {
+                    timeColor = "§e"; // yellow
+                } else {
+                    timeColor = "§a"; // green
+                }
+
+                time.setPrefix("§fTime: " + timeColor + min + ":" + String.format("%02d", sec));
                 theme.setPrefix("§aTheme: §f" + themeName);
                 mode.setPrefix("§aMode: §f" + modeText);
             }

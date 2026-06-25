@@ -7,27 +7,88 @@ description: A mod for build battle in Minecraft.
 
 commands:
   nightvision:
-    description: Toggles night vision
-
-  start:
-    description: Starts the build battle game
+    description: Toggle night vision
+    usage: /nightvision
+    permission: buildbattle.nightvision
 
   addtime:
-    description: Adds time to the game
+    description: Add time to the game
+    usage: /addtime <seconds>
+    permission: buildbattle.addtime
 
   reset:
-    description: Resets the game
+    description: Reset the game
+    usage: /reset
+    permission: buildbattle.reset
+
+  start:
+    description: Start the game
+    usage: /start
+    permission: buildbattle.start
 
   floor:
-    description: Sets your plot floor to the block you're holding
+    description: Set plot floor
     usage: /floor
+    permission: buildbattle.floor
 
   teamsize:
-    description: Sets the size of teams
+    description: Set team size
+    usage: /teamsize <size>
+    permission: buildbattle.teamsize
 
   theme:
-    description: Manage game theme
-    usage: /theme set <theme> | /theme random | /theme reset
+    description: Manage theme
+    usage: /theme <set|random|reset>
+    permission: buildbattle.theme
 
   resetplot:
-    description: resets a plot by id.
+    description: Reset a plot
+    usage: /resetplot <id>
+    permission: buildbattle.resetplot
+
+
+permissions:
+  buildbattle.*:
+    description: Full access to all BuildBattle commands
+    default: op
+    children:
+      buildbattle.nightvision: true
+      buildbattle.addtime: true
+      buildbattle.reset: true
+      buildbattle.start: true
+      buildbattle.floor: true
+      buildbattle.teamsize: true
+      buildbattle.theme: true
+      buildbattle.resetplot: true
+
+  buildbattle.nightvision:
+    description: Toggle night vision
+    default: true
+
+  buildbattle.addtime:
+    description: Add time during game
+    default: op
+
+  buildbattle.reset:
+    description: Reset the game
+    default: op
+
+  buildbattle.start:
+    description: Start the game
+    default: op
+
+  buildbattle.floor:
+    description: Set plot floor
+    default: true
+
+  buildbattle.teamsize:
+    description: Change team size
+    default: op
+
+  buildbattle.theme:
+    description: Manage theme
+    default: op
+
+  buildbattle.resetplot:
+    description: Reset plots
+    default: op

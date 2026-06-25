@@ -355,6 +355,6 @@ public class PlotManager {
     }
 
     public List<Player> getPlayersInPlot(int plotId) {
-        return plotPlayers.get(plotId);
+        return plotPlayers.getOrDefault(plotId, new ArrayList<>());
     }
 }
